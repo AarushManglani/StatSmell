@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Code Smell Detector</title>
+<style>
+/* ---------- GLOBAL STYLES ---------- */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: "Inter", "Segoe UI", sans-serif;
+}
+
+body {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #2563eb, #60a5fa);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+/* ---------- CARD CONTAINER ---------- */
+.container {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  padding: 40px 35px;
+  width: 100%;
+  max-width: 800px;
+  color: #fff;
+  transition: all 0.3s ease;
+  animation: fadeIn 0.7s ease-in-out;
+}
+
+/* ---------- HEADER ---------- */
+h1 {
+  text-align: center;
+  font-size: 2.2rem;
+  margin-bottom: 25px;
+  color: #fff;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* ---------- TEXTAREA ---------- */
+textarea {
+  width: 100%;
+  height: 250px;
+  border: none;
+  border-radius: 12px;
+  padding: 15px;
+  font-size: 15px;
+  font-family: "Courier New", monospace;
+  outline: none;
+  background: rgba(255, 255, 255, 0.9);
+  color: #111;
+  resize: none;
+  transition: all 0.2s ease-in-out;
+}
+textarea:focus {
+  box-shadow: 0 0 0 3px #93c5fd;
+}
+
+/* ---------- UPLOAD SECTION ---------- */
+.upload-section {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 0.95rem;
+}
+.upload-section label {
+  font-weight: 500;
+  color: #f8fafc;
+}
+.upload-section input[type="file"] {
+  margin-top: 10px;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-radius: 8px;
+  padding: 8px;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.upload-section input[type="file"]::-webkit-file-upload-button {
+  background: #1d4ed8;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+.upload-section input[type="file"]::-webkit-file-upload-button:hover {
+  background: #2563eb;
+}
+
+/* ---------- BUTTON ---------- */
+button {
+  background-color: #1d4ed8;
+  color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 30px auto 0 auto;
+  display: block;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.3s ease;
+}
+button:hover {
+  background-color: #2563eb;
+  transform: translateY(-2px);
+}
+button:active {
+  transform: translateY(0px);
+}
+
+/* ---------- RESULT ---------- */
+#result {
+  text-align: center;
+  margin-top: 25px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 10px;
+  padding: 15px;
+  display: none;
+  transition: all 0.3s ease;
+}
+
+/* ---------- RESPONSIVE ---------- */
+@media (max-width: 600px) {
+  .container {
+    padding: 25px 20px;
+  }
+  h1 {
+    font-size: 1.6rem;
+  }
+  textarea {
+    height: 200px;
+    font-size: 13px;
+  }
+}
+
+/* ---------- ANIMATION ---------- */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 Code Smell Detector</h1>
+
+    <textarea id="codeInput" placeholder="Paste your Java code here..."></textarea>
+
+    <div class="upload-section">
+      <label>or Upload a Java file:</label><br>
+      <input type="file" id="fileInput" accept=".java">
+    </div>
+
+    <button id="predictBtn">🔍 Detect Smell</button>
+
+    <div id="result"></div>
+  </div>
+
+  <script>
+    const btn = document.getElementById("predictBtn");
+    const resultDiv = document.getElementById("result");
+
+    btn.addEventListener("click", async () => {
+      const codeText = document.getElementById("codeInput").value;
+      const fileInput = document.getElementById("fileInput").files[0];
+      const formData = new FormData();
+
+      if (fileInput) formData.append("file", fileInput);
+      else if (codeText.trim()) formData.append("code", codeText);
+      else {
+        showResult("⚠️ Please paste Java code or upload a file.", "#fcd34d");
+        return;
+      }
+
+      showResult("⏳ Analyzing...", "#93c5fd");
+
+      try {
+        const response = await fetch("/predict", { method: "POST", body: formData });
+        const data = await response.json();
+
+        if (data.smell) showResult("✅ Predicted Smell: " + data.smell, "#4ade80");
+        else if (data.error) showResult("❌ Error: " + data.error, "#f87171");
+        else showResult("❓ Unexpected response from server.", "#fbbf24");
+      } catch (err) {
+        showResult("🚫 Error connecting to backend: " + err.message, "#f87171");
+      }
+    });
+
+    function showResult(message, color) {
+      resultDiv.style.display = "block";
+      resultDiv.style.background = color + "33";
+      resultDiv.style.border = "1px solid " + color;
+      resultDiv.innerText = message;
+    }
+  </script>
+</body>
+</html>
